@@ -437,3 +437,5 @@ class Constraints:
                 goal_collision = True
             return True, goal_collision
         return False, False   
+    
+    #ababbaa

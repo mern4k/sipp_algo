@@ -15,9 +15,9 @@ class DynamicObstacle:
     def __init__(self, path: list[tuple[int, int, int]]):
         self.path = sorted(path)
 
-    def last_position(self, time: int) -> tuple[int, int]:
+    def last_position(self, time: int) -> Optional[tuple[int, int]]:
         if not self.path:
-            return (-1, -1)
+            return None
         last_pos = self.path[0][1:]
         for t, i, j in self.path:
             if time < t:
@@ -32,16 +32,15 @@ class DynamicObstacle:
             return self.path[-1][1:]
         cur = None
         next = None
-        for i in range(len(self.path) - 1):
-            if self.path[i][0] <= time < self.path[i+1][0]:
-                cur = self.path[i]
-                next = self.path[i+1]
+        for cur_, next_ in zip(self.path[:-1], self.path[1:]):
+            if cur_[0] <= time < next_[0]:
+                cur = cur_
+                next = next_
                 break
         t1, i1, j1 = cur
         t2, i2, j2 = next
-        if t1 == t2: return (float(i1), float(j1))
-        i = i1 + (i2 - i1) * (time - t1)
-        j = j1 + (j2 - j1) * (time - t1)
+        i = i1 + (i2 - i1) * (time - t1) / (t2 - t1)
+        j = j1 + (j2 - j1) * (time - t1) / (t2 - t1)
         return (i, j)
 
 class Constraints:
@@ -57,13 +56,12 @@ class Constraints:
         limit_time = float('inf')
         collisions = set()
         for obs in self.obstacles:
-            last_t = -1
-            prev_pos = (-1, -1)
+            last_t = None
+            prev_pos = None
             for t, obs_i, obs_j in obs.path:
                 if (obs_i, obs_j) == (i, j):
-                    if prev_pos == (i, j) and last_t != -1:
-                        for t0 in range(last_t, t):
-                           collisions.add(t0)
+                    if prev_pos == (i, j) and last_t is not None:
+                        collisions.update(range(last_t, t))
                     collisions.add(t)
                 last_t = t
                 prev_pos = (obs_i, obs_j)
@@ -72,25 +70,25 @@ class Constraints:
                 if final_t < limit_time:
                     limit_time = final_t
 
-        safe_intervals = [SafeInterval(0, limit_time)]            
+        interval = SafeInterval(0, limit_time)
         if not collisions:
-             self._cache[(i,j)] = safe_intervals
-             return safe_intervals
+            safe_intervals = [interval]            
+            self._cache[(i, j)] = safe_intervals
+            return safe_intervals
         final_intervals = []
-        for interval in safe_intervals:
-            current_start = interval.start
-            sorted_collisions = sorted(list(t for t in collisions if interval.start <= t < interval.end))
-            for t_coll in sorted_collisions:
-                if t_coll > current_start:
-                    final_intervals.append(SafeInterval(current_start, t_coll))
-                current_start = t_coll + 1
-            if current_start < interval.end:
-                 final_intervals.append(SafeInterval(current_start, interval.end))
+        current_start = interval.start
+        sorted_collisions = sorted(list(t for t in collisions if interval.start <= t < interval.end))
+        for t_coll in sorted_collisions:
+            if t_coll > current_start:
+                final_intervals.append(SafeInterval(current_start, t_coll))
+            current_start = t_coll + 1
+        if current_start < interval.end:
+                final_intervals.append(SafeInterval(current_start, interval.end))
         self._cache[(i, j)] = final_intervals
         return self._cache[(i, j)]
     
     def safe_transition(self, from_i: int, from_j: int, to_i: int, to_j: int, departure_time: int) -> bool:
-        arrival_time = departure_time + 1
+        arrival_time = departure_time + compute_cost(from_i, from_j, to_i, to_j)
         for obs in self.obstacles:
             obs_start = obs.last_position(departure_time)
             obs_end = obs.last_position(arrival_time)

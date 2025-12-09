@@ -7,6 +7,9 @@ from utils.map import Map
 from utils.sipp import DynamicObstacle, sipp
 from utils.visualization import create_animation
 
+def manhattan_dist(i1, j1, i2, j2):
+        return abs(i1 - i2) + abs(j1 - j2)
+
 def convert_string_to_cells(cell_str: str) -> npt.NDArray:
     lines = cell_str.replace(" ", "").split("\n")
     return np.array([[1 if char == "#" else 0 for char in line] for line in lines if line], dtype=np.int8)
@@ -101,7 +104,7 @@ if __name__ == '__main__':
 
     path_found, last_node, steps, tree_size, open_nodes, closed_nodes = sipp(
         test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
-        dynamic_obstacles, SearchTreePQD
+        dynamic_obstacles, SearchTreePQD, manhattan_dist
     )
     
     if path_found:

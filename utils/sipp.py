@@ -94,19 +94,21 @@ def compute_cost(i1: int, j1: int, i2: int, j2: int) -> Union[int, float]:
     if abs(i1 - i2) + abs(j1 - j2) == 1: 
         return 1
 
+
+
 def sipp(
     task_map: Map, start_i: int, start_j: int, goal_i: int, goal_j: int,
-    obstacles: list[DynamicObstacle], search_tree: Type[SearchTreePQD]
+    obstacles: list[DynamicObstacle], search_tree: Type[SearchTreePQD], heuristic_func: callable
 ) -> Tuple[bool, Optional[SippNode], int, int, Optional[Iterable[SippNode]], Optional[Iterable[SippNode]]]:
-    ast, steps = search_tree(), 0
+    ast = search_tree()
+    steps = 0
     width, height = task_map.get_size()
     constraints = Constraints(width, height, obstacles)
-    def heuristic_func(i, j): 
-        return abs(i - goal_i) + abs(j - goal_j)
+    
     for interval in constraints.safe_intervals(start_i, start_j):
-        if interval.start == float('inf'): 
+        if interval.start == float('inf'):
             continue
-        start_node = SippNode(start_i, start_j, g=interval.start, h=heuristic_func(start_i, start_j), interval=interval)
+        start_node = SippNode(start_i, start_j, g=interval.start, h=heuristic_func(start_i, start_j, goal_i, goal_j), interval=interval)
         ast.add_to_open(start_node)
 
     while not ast.open_is_empty():
@@ -130,8 +132,8 @@ def sipp(
                 if actual_arrival < neighbor_interval.end:
                     departure_time = actual_arrival - move_duration
                     if not constraints.safe_transition(cur_node.i, cur_node.j, row, col, int(departure_time)):
-                        continue                  
-                    new_node = SippNode(row, col, g=actual_arrival, h=heuristic_func(row, col), parent=cur_node, interval=neighbor_interval)
+                        continue
+                    new_node = SippNode(row, col, g=actual_arrival, h=heuristic_func(row, col, goal_i, goal_j), parent=cur_node, interval=neighbor_interval)
                     if not ast.was_expanded(new_node):
                         ast.add_to_open(new_node)
     return False, None, steps, len(ast), None, ast.expanded

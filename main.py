@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
         correct = last_node.arrival_time == durations[test_index]
         
-        print(f"Path found. Arrival time: {last_node.arrival_time}. Steps: {steps}. Tree size: {tree_size}. Correct: {correct}")
+        print(f"Path found. Arrival time: {last_node.arrival_time}. Steps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
         create_animation("out/sipp_animation.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
     else:
         print("Path not found.")

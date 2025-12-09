@@ -131,7 +131,7 @@ def sipp(
                     continue
                 if actual_arrival < neighbor_interval.end:
                     departure_time = actual_arrival - move_duration
-                    if not constraints.safe_transition(cur_node.i, cur_node.j, row, col, int(departure_time)):
+                    if not constraints.safe_transition(cur_node.i, cur_node.j, row, col, departure_time):
                         continue
                     new_node = SippNode(row, col, g=actual_arrival, h=heuristic_func(row, col, goal_i, goal_j), parent=cur_node, interval=neighbor_interval)
                     if not ast.was_expanded(new_node):

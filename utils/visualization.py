@@ -43,7 +43,7 @@ def create_animation(
     path: List[SippNode],
     dynamic_obstacles: List[DynamicObstacle],
 ):
-    scale = 10
+    scale = 20
     height, width = grid_map.get_size()
     frames = []
     final_time = path[-1].arrival_time

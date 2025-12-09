@@ -28,7 +28,7 @@ class SippNode(BaseNode):
 
 class SearchTreePQD:
     def __init__(self):
-        self._open, self._closed, self._enc_open_duplicates = [], {}, 0
+        self._open, self._closed, self._enc_open_dublicates = [], {}, 0
     def __len__(self) -> int: 
         return len(self._open) + len(self._closed)
     def open_is_empty(self) -> bool: 
@@ -40,7 +40,7 @@ class SearchTreePQD:
             best_node = heappop(self._open)
             if best_node not in self._closed: 
                 return best_node
-            self._enc_open_duplicates += 1
+            self._enc_open_dublicates += 1
         return None
     def add_to_closed(self, item: SippNode): self._closed[item] = item
     def was_expanded(self, item: SippNode) -> bool: 
@@ -53,4 +53,4 @@ class SearchTreePQD:
         return self._closed.values()
     @property
     def number_of_open_dublicates(self): 
-        return self._enc_open_duplicates
+        return self._enc_open_dublicates

@@ -6,6 +6,7 @@ from utils.search_tree import SippNode, SearchTreePQD
 from utils.map import Map
 from utils.sipp import DynamicObstacle, sipp
 from utils.visualization import create_animation
+from utils.wsipp import w_sipp
 
 def manhattan_dist(i1, j1, i2, j2):
         return abs(i1 - i2) + abs(j1 - j2)
@@ -119,5 +120,25 @@ if __name__ == '__main__':
         
         print(f"Path found. Arrival time: {last_node.arrival_time}. Steps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
         create_animation("out/sipp_animation.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
+    else:
+        print("Path not found.")
+
+    path_found, last_node, steps, tree_size, open_nodes, closed_nodes = w_sipp(
+        test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
+        dynamic_obstacles, SearchTreePQD, manhattan_dist, 5
+    )
+    
+    if path_found:
+        path = []
+        curr = last_node
+        while curr is not None:
+            path.append(curr)
+            curr = curr.parent
+        path.reverse()
+
+        correct = last_node.arrival_time == durations[test_index]
+        
+        print(f"Path found. Arrival time: {last_node.arrival_time}. Steps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
+        create_animation("out/wsipp_animation.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
     else:
         print("Path not found.")

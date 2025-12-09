@@ -19,7 +19,7 @@ class DynamicObstacle:
             last_pos = (i, j)
         return last_pos
     
-    def location(self, time: int) -> tuple[float, float]:
+    def location(self, time: float) -> tuple[float, float]:
         if time <= self.path[0][0]: 
             return self.path[0][1:]
         if time >= self.path[-1][0]: 
@@ -81,20 +81,18 @@ class Constraints:
         self._cache[(i, j)] = final_intervals
         return self._cache[(i, j)]
     
-    def safe_transition(self, from_i: int, from_j: int, to_i: int, to_j: int, departure_time: int) -> bool:
-        arrival_time = departure_time + compute_cost(from_i, from_j, to_i, to_j)
+    def safe_transition(self, i1: int, j1: int, i2: int, j2: int, departure_time: int) -> bool:
+        arrival_time = departure_time + compute_cost(i1, j1, i2, j2)
         for obs in self.obstacles:
             obs_start = obs.last_position(departure_time)
             obs_end = obs.last_position(arrival_time)
-            if obs_start == (to_i, to_j) and obs_end == (from_i, from_j):
+            if obs_start == (i2, j2) and obs_end == (i1, j1):
                 return False
         return True
-
 
 def compute_cost(i1: int, j1: int, i2: int, j2: int) -> Union[int, float]:
     if abs(i1 - i2) + abs(j1 - j2) == 1: 
         return 1
-
 
 def sipp(
     task_map: Map, start_i: int, start_j: int, goal_i: int, goal_j: int,
@@ -121,9 +119,9 @@ def sipp(
         if cur_node.i == goal_i and cur_node.j == goal_j and cur_node.interval.end == float('inf'):
             return True, cur_node, steps, len(ast), ast.opened, ast.expanded
         steps += 1
-        for ni, nj in task_map.get_neighbors(cur_node.i, cur_node.j):
-            move_duration = compute_cost(cur_node.i, cur_node.j, ni, nj)
-            for neighbor_interval in constraints.safe_intervals(ni, nj):
+        for row, col in task_map.get_neighbors(cur_node.i, cur_node.j):
+            move_duration = compute_cost(cur_node.i, cur_node.j, row, col)
+            for neighbor_interval in constraints.safe_intervals(row, col):
                 earliest_departure = cur_node.arrival_time
                 earliest_arrival = earliest_departure + move_duration
                 actual_arrival = max(earliest_arrival, neighbor_interval.start)
@@ -131,9 +129,9 @@ def sipp(
                     continue
                 if actual_arrival < neighbor_interval.end:
                     departure_time = actual_arrival - move_duration
-                    if not constraints.safe_transition(cur_node.i, cur_node.j, ni, nj, int(departure_time)):
+                    if not constraints.safe_transition(cur_node.i, cur_node.j, row, col, int(departure_time)):
                         continue                  
-                    new_node = SippNode(ni, nj, g=actual_arrival, h=heuristic_func(ni, nj), parent=cur_node, interval=neighbor_interval)
+                    new_node = SippNode(row, col, g=actual_arrival, h=heuristic_func(row, col), parent=cur_node, interval=neighbor_interval)
                     if not ast.was_expanded(new_node):
                         ast.add_to_open(new_node)
     return False, None, steps, len(ast), None, ast.expanded

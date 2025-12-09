@@ -1,14 +1,17 @@
 from utils.search_tree import SippNode
 from utils.map import Map
 from utils.sipp import DynamicObstacle
-from typing import List
+from typing import List, Union
 from random import randint
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import numpy as np
 
 def draw_rectangle(draw, i, j, scale, color):
     draw.rectangle(((j * scale, i * scale), ((j + 1) * scale - 1, (i + 1) * scale - 1)), fill=color, width=0)
 
+def compute_cost(i1: int, j1: int, i2: int, j2: int) -> Union[int, float]:
+    if abs(i1 - i2) + abs(j1 - j2) == 1: 
+        return 1
 
 def agent_position(path: List[SippNode], time: float) -> tuple[float, float]:
     if time <= path[0].arrival_time: 
@@ -24,7 +27,7 @@ def agent_position(path: List[SippNode], time: float) -> tuple[float, float]:
             break
     t1, i1, j1 = cur.arrival_time, cur.i, cur.j
     t2, i2, j2 = next.arrival_time, next.i, next.j
-    start_time = t2 - 1
+    start_time = t2 - compute_cost(i1, j1, i2, j2)
     if time < start_time:
         return (float(i1), float(j1))
     if t1 == t2: return (float(i1), float(j1))
@@ -40,7 +43,7 @@ def create_animation(
     path: List[SippNode],
     dynamic_obstacles: List[DynamicObstacle],
 ):
-    scale = 20
+    scale = 10
     height, width = grid_map.get_size()
     frames = []
     final_time = path[-1].arrival_time

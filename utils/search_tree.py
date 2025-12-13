@@ -107,3 +107,55 @@ class SearchTreePQDReexp(SearchTreePQD):
     @property
     def number_of_reexpansions(self):
         return self._number_of_reexpansions
+    
+
+class SearchTreePQDFocal(SearchTreePQDReexp):
+    def __init__(self, heuristic_func: callable, w: float, goal_i, goal_j):
+        super().__init__()
+        self._heuristic_func = heuristic_func
+        self._w = w
+        self._focal = []
+        self._focal_bound = float('inf')
+        self._goal_i = goal_i
+        self._goal_j = goal_j
+
+    def focal_is_empty(self) -> bool: 
+        return not self._focal
+    
+    def _expand_focal(self):
+        if self.open_is_empty() or not self.focal_is_empty():
+            return
+        new_bound = self._w * self._open[0].f
+        if new_bound <= self._focal_bound:
+            return
+        self._focal_bound = new_bound
+        for item in self._open:
+            if item.f <= self._focal_bound and item not in self._closed:
+                heappush(self._focal, (self._heuristic_func(item.i, item.j, self._goal_i, self._goal_j), item))
+
+    def add_to_open(self, item: SippNode):
+        if item in self._closed:
+            if self._closed[item] > item:
+                del self._closed[item]
+                self._reopened.add(item)
+            else:
+                return
+        heappush(self._open, item)
+        if item.f <= self._focal_bound:
+            heappush(self._focal, (self._heuristic_func(item.i, item.j, self._goal_i, self._goal_j), item))
+
+    def get_best_node_from_open(self) -> Optional[SippNode]:
+        while self._open:
+            if self.focal_is_empty():
+                self._expand_focal()
+                if self.focal_is_empty():
+                    return None
+            best_node = heappop(self._focal)[1]
+            if best_node in self._closed:
+                self._enc_open_dublicates += 1
+                continue
+            if best_node in self._reopened:
+                self._reexpanded.add(best_node)
+                self._number_of_reexpansions += 1
+            return best_node
+        return None

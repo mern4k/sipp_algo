@@ -1,6 +1,7 @@
 from heapq import heappop, heappush
 from typing import Optional, Union
 
+
 class BaseNode:
     def __init__(self, i: int, j: int, g: Union[float, int] = 0, h: Union[float, int] = 0, f: Optional[Union[float, int]] = None, parent: Optional["BaseNode"] = None):
         self.i, self.j, self.g, self.h, self.parent = i, j, g, h, parent
@@ -12,9 +13,10 @@ class BaseNode:
     def __lt__(self, other): 
         return self.g < other.g
 
+
 class SippNode(BaseNode):
-    def __init__(self, i, j, g=0, h=0, parent=None, interval=None):
-        super().__init__(i=i, j=j, g=g, h=h, parent=parent)
+    def __init__(self, i, j, g=0, h=0, f=None, parent=None, interval=None):
+        super().__init__(i=i, j=j, g=g, h=h, f=f, parent=parent)
         self.interval = interval
     @property
     def arrival_time(self): 
@@ -25,6 +27,17 @@ class SippNode(BaseNode):
         return hash((self.i, self.j, self.interval))
     def __eq__(self, other): 
         return self.i == other.i and self.j == other.j and self.interval == other.interval
+
+
+class SippNodeDublicate(SippNode):
+    def __init__(self, i, j, isOptimal, g=0, h=0, f=None, parent=None, interval=None):
+        super().__init__(i=i, j=j, g=g, h=h, f=f, parent=parent, interval=interval)
+        self.isOptimal = isOptimal
+    def __hash__(self): 
+        return hash((self.i, self.j, self.interval, self.isOptimal))
+    def __eq__(self, other): 
+        return self.i == other.i and self.j == other.j and self.interval == other.interval and self.isOptimal == other.isOptimal
+    
 
 class SearchTreePQD:
     def __init__(self):
@@ -54,3 +67,43 @@ class SearchTreePQD:
     @property
     def number_of_open_dublicates(self): 
         return self._enc_open_dublicates
+    
+    
+class SearchTreePQDReexp(SearchTreePQD):
+    def __init__(self):
+        super().__init__()
+        self._reexpanded = set() 
+        self._reopened = set() 
+        self._number_of_reexpansions = 0  
+
+    def add_to_open(self, item: SippNode):
+        if item in self._closed:
+            if self._closed[item] > item:
+                del self._closed[item]
+                self._reopened.add(item)
+            else:
+                return
+        heappush(self._open, item)
+
+    def get_best_node_from_open(self) -> Optional[SippNode]:
+        while self._open:
+            best_node = heappop(self._open)
+            if best_node in self._closed:
+                self._enc_open_dublicates += 1
+                continue
+            if best_node in self._reopened:
+                self._reexpanded.add(best_node)
+                self._number_of_reexpansions += 1
+            return best_node
+        return None
+
+    def was_expanded(self, item: SippNode) -> bool:
+        return (item in self._closed or item in self._reopened)
+
+    @property
+    def reexpanded(self):
+        return self._reexpanded
+
+    @property
+    def number_of_reexpansions(self):
+        return self._number_of_reexpansions

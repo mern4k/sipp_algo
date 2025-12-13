@@ -1,9 +1,11 @@
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple, Type, Union
-from utils.search_tree import SippNode, SearchTreePQD
+from typing import Iterable, Optional, Tuple, Union
+from utils.search_tree import SippNode, SearchTreePQD, SearchTreePQDReexp
 from utils.map import Map
 
+
 SafeInterval = namedtuple('SafeInterval', ['start', 'end'])
+
 
 class DynamicObstacle:
     def __init__(self, path: list[tuple[int, int, int]]):
@@ -36,6 +38,7 @@ class DynamicObstacle:
         i = i1 + (i2 - i1) * (time - t1) / (t2 - t1)
         j = j1 + (j2 - j1) * (time - t1) / (t2 - t1)
         return (i, j)
+
 
 class Constraints:
     def __init__(self, width: int, height: int, obstacles: list[DynamicObstacle]):
@@ -90,17 +93,31 @@ class Constraints:
                 return False
         return True
 
+
 def compute_cost(i1: int, j1: int, i2: int, j2: int) -> Union[int, float]:
     if abs(i1 - i2) + abs(j1 - j2) == 1: 
         return 1
 
 
+def get_arrival_time(cur_node, row, col, move_duration, neighbor_interval, constraints) -> Optional[float]:
+    earliest_departure = cur_node.arrival_time
+    earliest_arrival = earliest_departure + move_duration
+    actual_arrival = max(earliest_arrival, neighbor_interval.start)
+    if actual_arrival - move_duration >= cur_node.interval.end:
+        return None
+    if actual_arrival >= neighbor_interval.end:
+        return None
+    departure_time = actual_arrival - move_duration
+    if not constraints.safe_transition(cur_node.i, cur_node.j, row, col, departure_time):
+        return None
+    return actual_arrival
+
 
 def sipp(
-    task_map: Map, start_i: int, start_j: int, goal_i: int, goal_j: int,
-    obstacles: list[DynamicObstacle], search_tree: Type[SearchTreePQD], heuristic_func: callable
+    task_map: Map, start_i: int, start_j: int, goal_i: int, goal_j: int, obstacles: list[DynamicObstacle], 
+    heuristic_func: callable, allow_reexpansions: bool = False
 ) -> Tuple[bool, Optional[SippNode], int, int, Optional[Iterable[SippNode]], Optional[Iterable[SippNode]]]:
-    ast = search_tree()
+    ast = SearchTreePQDReexp() if allow_reexpansions else SearchTreePQD()
     steps = 0
     width, height = task_map.get_size()
     constraints = Constraints(width, height, obstacles)
@@ -124,17 +141,10 @@ def sipp(
         for row, col in task_map.get_neighbors(cur_node.i, cur_node.j):
             move_duration = compute_cost(cur_node.i, cur_node.j, row, col)
             for neighbor_interval in constraints.safe_intervals(row, col):
-                earliest_departure = cur_node.arrival_time
-                earliest_arrival = earliest_departure + move_duration
-                actual_arrival = max(earliest_arrival, neighbor_interval.start)
-                if actual_arrival - move_duration >= cur_node.interval.end:
+                actual_arrival = get_arrival_time(cur_node, row, col, move_duration, neighbor_interval, constraints)
+                if actual_arrival is None:
                     continue
-                if actual_arrival < neighbor_interval.end:
-                    departure_time = actual_arrival - move_duration
-                    if not constraints.safe_transition(cur_node.i, cur_node.j, row, col, departure_time):
-                        continue
-                    new_node = SippNode(row, col, g=actual_arrival, h=heuristic_func(row, col, goal_i, goal_j), parent=cur_node, interval=neighbor_interval)
-                    if not ast.was_expanded(new_node):
-                        ast.add_to_open(new_node)
+                new_node = SippNode(row, col, g=actual_arrival, h=heuristic_func(row, col, goal_i, goal_j), parent=cur_node, interval=neighbor_interval)
+                if allow_reexpansions or not ast.was_expanded(new_node):
+                    ast.add_to_open(new_node)
     return False, None, steps, len(ast), None, ast.expanded
-

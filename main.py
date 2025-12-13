@@ -6,7 +6,7 @@ from utils.search_tree import SippNode, SearchTreePQD
 from utils.map import Map
 from utils.sipp import DynamicObstacle, sipp
 from utils.visualization import create_animation
-from utils.wsipp import w_sipp
+from utils.wsipp import w_sipp, w_sipp_dublicate_states, w_sipp_with_reexpansions
 
 def manhattan_dist(i1, j1, i2, j2):
         return abs(i1 - i2) + abs(j1 - j2)
@@ -103,42 +103,36 @@ if __name__ == '__main__':
     #dynamic_obstacles = [obstacle1, obstacle2, obstacle3, obstacle4, obstacle5]
     dynamic_obstacles = [DynamicObstacle(obs) for obs in read_lists_from_file(os.path.join("samples/obstacles.txt"))]
 
-    path_found, last_node, steps, tree_size, open_nodes, closed_nodes = sipp(
-        test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
-        dynamic_obstacles, SearchTreePQD, manhattan_dist
-    )
-    
-    if path_found:
-        path = []
-        curr = last_node
-        while curr is not None:
-            path.append(curr)
-            curr = curr.parent
-        path.reverse()
+    def run_test(algo: callable, w=None):
+        if w is None:
+            path_found, last_node, steps, tree_size, open_nodes, closed_nodes = algo(
+                test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
+                dynamic_obstacles, manhattan_dist
+            )
+        else:
+            path_found, last_node, steps, tree_size, open_nodes, closed_nodes = algo(
+                test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
+                dynamic_obstacles, manhattan_dist, w
+            )
 
-        correct = last_node.arrival_time == durations[test_index]
+        if path_found:
+            path = []
+            curr = last_node
+            while curr is not None:
+                path.append(curr)
+                curr = curr.parent
+            path.reverse()
+
+            correct = last_node.arrival_time == durations[test_index] if w is None else last_node.arrival_time <= w * durations[test_index]
+            
+            print(f"Running test on alghorithm {algo.__name__}.")
+            print(f"Path found. \nArrival time: {last_node.arrival_time}. Real answer: {durations[test_index]}. \nSteps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
+            create_animation(f"out/{algo.__name__}.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
+            print()
+        else:
+            print("Path not found.")
         
-        print(f"Path found. Arrival time: {last_node.arrival_time}. Steps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
-        create_animation("out/sipp_animation.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
-    else:
-        print("Path not found.")
-
-    path_found, last_node, steps, tree_size, open_nodes, closed_nodes = w_sipp(
-        test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
-        dynamic_obstacles, SearchTreePQD, manhattan_dist, 5
-    )
-    
-    if path_found:
-        path = []
-        curr = last_node
-        while curr is not None:
-            path.append(curr)
-            curr = curr.parent
-        path.reverse()
-
-        correct = last_node.arrival_time == durations[test_index]
-        
-        print(f"Path found. Arrival time: {last_node.arrival_time}. Steps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
-        create_animation("out/wsipp_animation.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
-    else:
-        print("Path not found.")
+    run_test(sipp)
+    run_test(w_sipp, 3)
+    run_test(w_sipp_dublicate_states, 3)
+    run_test(w_sipp_with_reexpansions, 3)

@@ -98,7 +98,7 @@ class SearchTreePQDReexp(SearchTreePQD):
         return None
 
     def was_expanded(self, item: SippNode) -> bool:
-        return (item in self._closed or item in self._reopened)
+        return item in self._closed
 
     @property
     def reexpanded(self):
@@ -115,7 +115,7 @@ class SearchTreePQDFocal(SearchTreePQDReexp):
         self._heuristic_func = heuristic_func
         self._w = w
         self._focal = []
-        self._focal_bound = float('inf')
+        self._focal_bound = -1
         self._goal_i = goal_i
         self._goal_j = goal_j
 
@@ -123,7 +123,9 @@ class SearchTreePQDFocal(SearchTreePQDReexp):
         return not self._focal
     
     def _expand_focal(self):
-        if self.open_is_empty() or not self.focal_is_empty():
+        while self._open and self._open[0] in self._closed:
+            heappop(self._open)
+        if self.open_is_empty():
             return
         new_bound = self._w * self._open[0].f
         if new_bound <= self._focal_bound:

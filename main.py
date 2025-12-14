@@ -7,6 +7,7 @@ from utils.map import Map
 from utils.sipp import DynamicObstacle, sipp
 from utils.visualization import create_animation
 from utils.wsipp import w_sipp, w_sipp_dublicate_states, w_sipp_with_reexpansions
+from utils.focal_sipp import focal_sipp
 
 def manhattan_dist(i1, j1, i2, j2):
         return abs(i1 - i2) + abs(j1 - j2)
@@ -131,8 +132,32 @@ if __name__ == '__main__':
             print()
         else:
             print("Path not found.")
+
+    w=3
         
     run_test(sipp)
-    run_test(w_sipp, 3)
-    run_test(w_sipp_dublicate_states, 3)
-    run_test(w_sipp_with_reexpansions, 3)
+    run_test(w_sipp, w)
+    run_test(w_sipp_dublicate_states, w)
+    run_test(w_sipp_with_reexpansions, w)
+
+    path_found, last_node, steps, tree_size, open_nodes, closed_nodes = focal_sipp(
+            test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
+            dynamic_obstacles, manhattan_dist, manhattan_dist, w
+        )
+
+    if path_found:
+        path = []
+        curr = last_node
+        while curr is not None:
+            path.append(curr)
+            curr = curr.parent
+        path.reverse()
+
+        correct = last_node.arrival_time == durations[test_index] if w is None else last_node.arrival_time <= w * durations[test_index]
+        
+        print(f"Running test on alghorithm {focal_sipp.__name__}.")
+        print(f"Path found. \nArrival time: {last_node.arrival_time}. Real answer: {durations[test_index]}. \nSteps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
+        create_animation(f"out/{focal_sipp.__name__}.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
+        print()
+    else:
+        print("Path not found.")

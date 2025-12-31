@@ -5,7 +5,7 @@ from utils.map import Map
 
 def focal_sipp(
     task_map: Map, start_i: int, start_j: int, goal_i: int, goal_j: int, obstacles: list[DynamicObstacle], 
-    heuristic_func: callable, focal_heuristic: callable, w:float
+    heuristic_func: callable, w: float, focal_heuristic: callable
 ) -> Tuple[bool, Optional[SippNode], int, int, Optional[Iterable[SippNode]], Optional[Iterable[SippNode]]]:
     ast = SearchTreePQDFocal(focal_heuristic, w, goal_i, goal_j)
     steps = 0

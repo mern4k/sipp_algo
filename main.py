@@ -104,18 +104,14 @@ if __name__ == '__main__':
     #dynamic_obstacles = [obstacle1, obstacle2, obstacle3, obstacle4, obstacle5]
     dynamic_obstacles = [DynamicObstacle(obs) for obs in read_lists_from_file(os.path.join("samples/obstacles.txt"))]
 
-    def run_test(algo: callable, w=None):
-        if w is None:
-            path_found, last_node, steps, tree_size, open_nodes, closed_nodes = algo(
-                test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
-                dynamic_obstacles, manhattan_dist
-            )
-        else:
-            path_found, last_node, steps, tree_size, open_nodes, closed_nodes = algo(
-                test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
-                dynamic_obstacles, manhattan_dist, w
-            )
-
+    def run_test(algo: callable, *args):
+        path_found, last_node, steps, tree_size, open_nodes, closed_nodes = algo(
+            test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
+            dynamic_obstacles, manhattan_dist, *args
+        )
+        w = None
+        if args:
+            w = args[0]
         if path_found:
             path = []
             curr = last_node
@@ -139,25 +135,4 @@ if __name__ == '__main__':
     run_test(w_sipp, w)
     run_test(w_sipp_dublicate_states, w)
     run_test(w_sipp_with_reexpansions, w)
-
-    path_found, last_node, steps, tree_size, open_nodes, closed_nodes = focal_sipp(
-            test_map, start_node.i, start_node.j, goal_node.i, goal_node.j, 
-            dynamic_obstacles, manhattan_dist, manhattan_dist, w
-        )
-
-    if path_found:
-        path = []
-        curr = last_node
-        while curr is not None:
-            path.append(curr)
-            curr = curr.parent
-        path.reverse()
-
-        correct = last_node.arrival_time == durations[test_index] if w is None else last_node.arrival_time <= w * durations[test_index]
-        
-        print(f"Running test on alghorithm {focal_sipp.__name__}.")
-        print(f"Path found. \nArrival time: {last_node.arrival_time}. Real answer: {durations[test_index]}. \nSteps: {steps}. Nodes created: {tree_size}. Correct: {correct}")
-        create_animation(f"out/{focal_sipp.__name__}.gif", test_map, start_node, goal_node, path, dynamic_obstacles)
-        print()
-    else:
-        print("Path not found.")
+    run_test(focal_sipp, w, manhattan_dist)

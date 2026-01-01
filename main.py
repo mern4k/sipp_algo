@@ -2,15 +2,13 @@ import os
 from typing import  List, Tuple
 import numpy as np
 import numpy.typing as npt
-from utils.search_tree import SippNode, SearchTreePQD
+from utils.search_tree import SippNode
 from utils.map import Map
 from utils.sipp import DynamicObstacle, sipp
 from utils.visualization import create_animation
 from utils.wsipp import w_sipp, w_sipp_dublicate_states, w_sipp_with_reexpansions
 from utils.focal_sipp import focal_sipp
-
-def manhattan_dist(i1, j1, i2, j2):
-        return abs(i1 - i2) + abs(j1 - j2)
+from utils.heuristics import manhattan_dist
 
 def convert_string_to_cells(cell_str: str) -> npt.NDArray:
     lines = cell_str.replace(" ", "").split("\n")

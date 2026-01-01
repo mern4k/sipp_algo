@@ -42,45 +42,60 @@ def create_animation(
     goal: SippNode,
     path: List[SippNode],
     dynamic_obstacles: List[DynamicObstacle],
+    animation_step = 0.2,
+    scale = 10
 ):
-    scale = 20
     height, width = grid_map.get_size()
-    frames = []
     final_time = path[-1].arrival_time
-    animation_step = 0.2 
     obstacle_colors = [(randint(30, 230), randint(30, 230), randint(30, 230)) for _ in dynamic_obstacles]
-        
-    for t in np.arange(0, final_time + 2, animation_step):
-        time = min(t, final_time)
-        im = Image.new("RGB", (width * scale, height * scale), color="white")
-        draw = ImageDraw.Draw(im)
-        for i in range(height):
-            for j in range(width):
-                if not grid_map.traversable(i, j):
-                    draw_rectangle(draw, i, j, scale, (70, 80, 80))
-        draw_rectangle(draw, start.i, start.j, scale, "green")
-        draw_rectangle(draw, goal.i, goal.j, scale, "red")
 
-        radius = scale * 0.28
-        agent_i, agent_j = agent_position(path, time)
-        cx, cy = (agent_j + 0.5) * scale, (agent_i + 0.5) * scale
-        draw.ellipse([(cx - radius, cy - radius), (cx + radius, cy + radius)], fill="blue")
-        for i, obstacle in enumerate(dynamic_obstacles):
-            obs_i, obs_j = obstacle.location(time)
-            if grid_map.in_bounds(obs_i, obs_j):
-                color = obstacle_colors[i]
-                cx, cy = (obs_j + 0.5) * scale, (obs_i + 0.5) * scale
-                draw.rectangle([(cx - radius, cy - radius), (cx + radius, cy + radius)], fill=color)
-        draw.text((5, 5), f"Time: {time:.1f}", fill="black")
-        frames.append(im)
+    def frame_generator():
+        for t in np.arange(0, final_time + 2, animation_step):
+            time = min(t, final_time)
+            im = Image.new("RGB", (width * scale, height * scale), color="white")
+            draw = ImageDraw.Draw(im)
+
+            for i in range(height):
+                for j in range(width):
+                    if not grid_map.traversable(i, j):
+                        draw_rectangle(draw, i, j, scale, (70, 80, 80))
+
+            draw_rectangle(draw, start.i, start.j, scale, "green")
+            draw_rectangle(draw, goal.i, goal.j, scale, "red")
+
+            radius = scale * 0.28
+            agent_i, agent_j = agent_position(path, time)
+            cx, cy = (agent_j + 0.5) * scale, (agent_i + 0.5) * scale
+            draw.ellipse(
+                [(cx - radius, cy - radius), (cx + radius, cy + radius)],
+                fill="blue"
+            )
+
+            for i, obstacle in enumerate(dynamic_obstacles):
+                obs_i, obs_j = obstacle.location(time)
+                if grid_map.in_bounds(obs_i, obs_j):
+                    color = obstacle_colors[i]
+                    cx, cy = (obs_j + 0.5) * scale, (obs_i + 0.5) * scale
+                    draw.rectangle(
+                        [(cx - radius, cy - radius), (cx + radius, cy + radius)],
+                        fill=color
+                    )
+
+            draw.text((5, 5), f"Time: {time:.1f}", fill="black")
+            yield im
 
     print("Saving to", filename)
-    frames[0].save(
+
+    gen = frame_generator()
+    first_frame = next(gen)
+
+    first_frame.save(
         filename,
         save_all=True,
-        append_images=frames[1:],
+        append_images=gen,
         optimize=False,
-        duration=50, 
+        duration=50,
         loop=0
     )
+
     print("Done")

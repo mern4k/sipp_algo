@@ -21,8 +21,27 @@ def extract_node_path(goal_node: SippNode) -> list[SippNode]:
 
 
 def extract_timed_path(goal_node: SippNode) -> list[tuple[int, int, int]]:
-    path = [(int(node.g), node.i, node.j) for node in extract_node_path(goal_node)]
-    return path
+    node_path = extract_node_path(goal_node)
+    timed_path = []
+    
+    for idx, node in enumerate(node_path):
+        arrival_time = int(node.g)
+        
+        if idx == 0:
+            timed_path.append((arrival_time, node.i, node.j))
+        else:
+            prev_node = node_path[idx - 1]
+            prev_time = int(prev_node.g)
+            move_duration = 1
+            departure_time = arrival_time - move_duration
+            
+            if departure_time > prev_time:
+                for t in range(prev_time + 1, departure_time + 1):
+                    timed_path.append((t, prev_node.i, prev_node.j))
+            
+            timed_path.append((arrival_time, node.i, node.j))
+    
+    return timed_path
 
 
 def continue_obstacle(
@@ -30,11 +49,27 @@ def continue_obstacle(
     new_segment: list[tuple[int, int, int]]
 ):
     last_time = obstacle.path[-1][0]
+    if len(new_segment) > 0 and new_segment[0][1:] != obstacle.path[-1][1:]:
+        print(f"некорректное продолжение пути:(")
+    
     shifted = [
         (t + last_time, i, j)
         for t, i, j in new_segment[1:]
     ]
     obstacle.path.extend(shifted)
+
+
+def extend_obstacle_to_horizon(
+    obstacle: DynamicObstacle,
+    time_horizon: int
+):
+    if not obstacle.path:
+        return
+    
+    last_time, last_i, last_j = obstacle.path[-1]
+    
+    for t in range(last_time + 1, time_horizon + 1):
+        obstacle.path.append((t, last_i, last_j))
 
 
 def plan_obstacle_path(
@@ -43,16 +78,23 @@ def plan_obstacle_path(
     goal: tuple[int, int],
     obstacles: list[DynamicObstacle],
     heuristic_func: callable,
+    start_time: int = 0,
     w_range=(1.1, 15.0),
     max_tries=5
 ) -> list[tuple[int, int, int]] | None:
+    shifted_obstacles = []
+    for obs in obstacles:
+        shifted_path = [(t - start_time, i, j) for t, i, j in obs.path if t >= start_time]
+        if shifted_path:
+            shifted_obstacles.append(DynamicObstacle(shifted_path))
+    
     for _ in range(max_tries):
         w = random.uniform(*w_range)
         success, goal_node, *_ = w_sipp_with_reexpansions(
             task_map,
             start[0], start[1],
             goal[0], goal[1],
-            obstacles,
+            shifted_obstacles,
             heuristic_func,
             w
         )
@@ -64,38 +106,56 @@ def plan_obstacle_path(
 def generate_dynamic_obstacles(
     task_map: Map,
     heuristic_func: callable,
-    max_obstacles: int = 100,
-    p_continue: float = 0.6
+    max_obstacles: int,
+    p_continue: float,
+    time_horizon: int
 ) -> list[DynamicObstacle]:
     obstacles = []
-    for _ in range(max_obstacles):
+    
+    for iter in range(max_obstacles):
+        if iter % 10 == 0:
+            print(f"Iteration {iter}/{max_obstacles}")
+
         continue_old = obstacles and random.random() < p_continue
+        
         if continue_old:
             obs = random.choice(obstacles)
-            start = obs.path[-1][1:]
+            last_entry = obs.path[-1]
+            start = (last_entry[1], last_entry[2])
+            start_time = last_entry[0]
         else:
             obs = None
             start = random_free_cell(task_map)
+            start_time = 0
+        
         for _ in range(10):
             goal = random_free_cell(task_map)
             if goal != start and are_connected(task_map, start, goal):
                 break
         else:
             continue
-
+        
         path = plan_obstacle_path(
             task_map,
             start,
             goal,
             obstacles,
-            heuristic_func
+            heuristic_func,
+            start_time=start_time
         )
+        
         if path is None:
             continue
+        
         if obs is None:
             obstacles.append(DynamicObstacle(path))
         else:
             continue_obstacle(obs, path)
+    
+    # for obs in obstacles:
+    #     extend_obstacle_to_horizon(obs, time_horizon)
+    
+    print(f"Total obstacles: {len(obstacles)}")
     return obstacles
 
 
@@ -103,16 +163,13 @@ def save_dynamic_obstacles(
     obstacles: list[DynamicObstacle],
     filename: str
 ):
-    max_time = max(
-        obs.path[-1][0] for obs in obstacles if obs.path
-    )
     with open(filename, "w", encoding="utf-8") as f:
+        f.write(f"obstacles {len(obstacles)}\n")
         for idx, obs in enumerate(obstacles):
-            f.write(f"{idx}\n")
-            for t in range(max_time + 1):
-                i, j = obs.location(t)
-                f.write(f"{i} {j}\n")
-            f.write("stop\n")
+            f.write(f"obstacle {idx}\n")
+            for t, i, j in obs.path:
+                f.write(f"{t} {i} {j}\n")
+            f.write("end\n")
 
 
 def load_dynamic_obstacles(
@@ -121,43 +178,57 @@ def load_dynamic_obstacles(
     obstacles: list[DynamicObstacle] = []
     with open(filename, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
+    
     idx = 0
     n = len(lines)
-    while idx < n:
+    if idx < n and lines[idx].startswith("obstacles"):
         idx += 1
-        path: list[tuple[int, int, int]] = []
-        t = 0
-        while idx < n and lines[idx] != "stop":
-            parts = lines[idx].split()
-            i = int(float(parts[-2]))
-            j = int(float(parts[-1]))
-            path.append((t, i, j))
-            t += 1
+    
+    while idx < n:
+        if lines[idx].startswith("obstacle"):
             idx += 1
-        idx += 1  
-        obstacles.append(DynamicObstacle(path))
+        path: list[tuple[int, int, int]] = []
+        
+        while idx < n and lines[idx] != "end":
+            parts = lines[idx].split()
+            t = int(parts[0])
+            i = int(parts[1])
+            j = int(parts[2])
+            path.append((t, i, j))
+            idx += 1
+        
+        if path:
+            obstacles.append(DynamicObstacle(path))
+        idx += 1
+    
+    print(f"Loaded {len(obstacles)} obstacles")
     return obstacles
 
 
 if __name__ == '__main__':
-    task_map = load_map_from_file("data/maps/den600d.map")
-    # dynamic_obstacles = generate_dynamic_obstacles(
-    #     task_map=task_map,
-    #     heuristic_func=manhattan_dist,
-    #     max_obstacles=6,
-    #     p_continue=0.6
-    # )
-
-    # save_dynamic_obstacles(
-    #     dynamic_obstacles,
-    #     filename="out/dynamic_obstacles.txt"
-    # )
-    dynamic_obstacles = load_dynamic_obstacles(
-        "out/dynamic_obstacles.txt"
+    task_map = load_map_from_file("data/maps/arena.map")
+    
+    dynamic_obstacles = generate_dynamic_obstacles(
+        task_map=task_map,
+        heuristic_func=manhattan_dist,
+        max_obstacles=400,
+        p_continue=0.8,
+        time_horizon=2000
     )
-
+    
+    save_dynamic_obstacles(
+        dynamic_obstacles,
+        filename="out/dynamic_obstacles_arena.txt"
+    )
+    
+    dynamic_obstacles = load_dynamic_obstacles(
+        "out/dynamic_obstacles_arena.txt"
+    )
+    
     start_i, start_j, goal_i, goal_j = random_start_goal(task_map)
-
+    
+    print(f"Planning path from ({start_i}, {start_j}) to ({goal_i}, {goal_j})")
+    
     success, goal_node, *_ = sipp(
         task_map,
         start_i,
@@ -168,13 +239,14 @@ if __name__ == '__main__':
         heuristic_func=manhattan_dist,
         allow_reexpansions=False
     )
-
+    
     if not success:
         print("Path not found")
         exit()
-
+    
     agent_path = extract_node_path(goal_node)
-
+    print(f"Path found! Length: {len(agent_path)}, arrival time: {agent_path[-1].g}")
+    
     create_animation(
         filename="out/generated_dynamic_obstacles_plus_sipp_agent.gif",
         grid_map=task_map,
@@ -182,6 +254,6 @@ if __name__ == '__main__':
         goal=agent_path[-1],
         path=agent_path,
         dynamic_obstacles=dynamic_obstacles,
-        animation_step=0.4,
-        scale=6
+        animation_step=0.3,
+        scale=10
     )

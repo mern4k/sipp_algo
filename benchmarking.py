@@ -8,17 +8,18 @@ from generate_map import load_map_from_file, load_dynamic_obstacles, random_star
 from utils.sipp import sipp
 from utils.wsipp import w_sipp, w_sipp_with_reexpansions, w_sipp_dublicate_states
 from utils.focal_sipp import focal_sipp, get_heuristic
+from utils.time_astar import time_astar
 
 class AlgoDefinition(NamedTuple):
     name: str
     func: Callable
     needs_heuristic: bool = False
 
-def collect_metrics_multi_w(
+def collect_metrics_w(
     map_name: str,
     algorithms: List[AlgoDefinition],
     weights: List[float],
-    num_tasks: int = 30,
+    num_tasks: int = 50,
 ) -> pl.DataFrame:
     results = []
     map_path = f"data/maps/{map_name}.map"        
@@ -63,7 +64,7 @@ def collect_metrics_multi_w(
 
     return pl.DataFrame(results)
 
-def plot_expansions_by_weight(df: pl.DataFrame):
+def plot_expansions(df: pl.DataFrame):
     pdf = df.drop_nulls(subset=["normalized_steps"]).to_pandas()
     sns.set_theme(style="whitegrid")
     plt.figure(figsize=(12, 7))
@@ -88,7 +89,7 @@ def plot_expansions_by_weight(df: pl.DataFrame):
     print(f"Saved {filename}")
     plt.show()
 
-def plot_suboptimality_by_weight(df: pl.DataFrame):
+def plot_suboptimality(df: pl.DataFrame):
     pdf = df.drop_nulls(subset=["optimality_ratio"]).to_pandas()
     sns.set_theme(style="whitegrid")
     plt.figure(figsize=(12, 7))
@@ -114,6 +115,63 @@ def plot_suboptimality_by_weight(df: pl.DataFrame):
     print(f"Saved {filename}")
     plt.show()
 
+
+def collect_comparison_data(
+    map: list[str],
+    num_tasks: int = 50
+) -> pl.DataFrame:
+    
+    results = []
+    map_path = f"data/maps/{map}.map"
+    grid = load_map_from_file(map_path)
+    obs_path = f"data/obstacles/dynamic_obstacles_{map}.txt"
+    obstacles = load_dynamic_obstacles(obs_path)
+    tasks = []
+    for _ in range(num_tasks):
+        tasks.append(random_start_goal(grid))
+    for i, (s_i, s_j, g_i, g_j) in enumerate(tqdm(tasks, desc=f"Benchmarking {map}")):
+        print(s_i, s_j, g_i, g_j)
+        sipp_res = sipp(grid, s_i, s_j, g_i, g_j, obstacles, manhattan_dist, allow_reexpansions=False)
+        sipp_found = sipp_res[0]
+        sipp_steps = sipp_res[2]
+        t_astar_res = time_astar(grid, s_i, s_j, g_i, g_j, obstacles, manhattan_dist)
+        t_astar_found = t_astar_res[0]
+        t_astar_steps = t_astar_res[2]
+        if sipp_found and t_astar_found:
+            results.append({
+                "Algorithm": "SIPP",
+                "Expanded Nodes": sipp_steps
+            })
+            results.append({
+                "Algorithm": "Time A*",
+                "Expanded Nodes": t_astar_steps
+            })
+    return pl.DataFrame(results)
+
+def plot_comparison(df: pl.DataFrame, map_name: str):
+    pdf = df.to_pandas()
+    sns.set_theme(style="whitegrid")
+    plt.figure(figsize=(6, 8))
+    ax = sns.barplot(
+        data=pdf,
+        x="Algorithm",
+        y="Expanded Nodes",
+        errorbar=None,
+        width=0.5
+    )
+    
+    plt.ylim(bottom=1, top=10000)
+    ax.set_yscale("log")
+    ax.set_title("Nodes expanded", fontsize=15)
+    ax.set_ylabel("Number of expanded nodes (log scale)", fontsize=12)
+    ax.set_xlabel("", fontsize=12)
+    plt.tight_layout()
+    filename = f"data/graphs/sipp_timeastar.png"
+    plt.savefig(filename)
+    print(f"Plot saved to {filename}")
+    plt.show()
+
+
 if __name__ == '__main__':
     map = "AR0016SR"
     weights_list = [1.1, 1.25, 1.5, 2.0, 4.0]
@@ -130,12 +188,28 @@ if __name__ == '__main__':
         df_results = pl.read_csv(file)
     else:
         print(f"Calculating for weights: {weights_list}...")
-        df_results = collect_metrics_multi_w(
+        df_results = collect_metrics_w(
             map_name=map,
             algorithms=algos,
             weights=weights_list,
             num_tasks=50
         )
         df_results.write_csv(file)
-    plot_expansions_by_weight(df_results)
-    plot_suboptimality_by_weight(df_results)
+    plot_expansions(df_results)
+    plot_suboptimality(df_results)
+
+    # map = "arena"
+    # file = "data/metrics/sipp_vs_timeastar.csv"
+    # recalc = False
+    # if not recalc and os.path.exists(file):
+    #     print(f"Loading from {file}...")
+    #     df_results = pl.read_csv(file)
+    # else:
+    #     print("Starting benchmark...")
+    #     df_results = collect_comparison_data(map, num_tasks=20)
+    #     print(df_results.group_by(["Algorithm"]).agg(
+    #         pl.col("Expanded Nodes").mean().alias("Avg Nodes"),
+    #         pl.col("Expanded Nodes").max().alias("Max Nodes")
+    #     ))
+    # df_results.write_csv(file)
+    # plot_comparison(df_results, map)

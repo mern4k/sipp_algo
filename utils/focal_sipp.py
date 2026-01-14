@@ -2,6 +2,9 @@ from utils.sipp import DynamicObstacle, Constraints, compute_cost, get_arrival_t
 from typing import Iterable, Optional, Tuple
 from utils.search_tree import SippNode, SearchTreePQDFocal
 from utils.map import Map
+import numpy as np
+from collections import deque
+from typing import Callable
 
 def focal_sipp(
     task_map: Map, start_i: int, start_j: int, goal_i: int, goal_j: int, obstacles: list[DynamicObstacle], 
@@ -37,3 +40,19 @@ def focal_sipp(
                 new_node = SippNode(row, col, g=actual_arrival, h=heuristic_func(row, col, goal_i, goal_j), parent=cur_node, interval=neighbor_interval)
                 ast.add_to_open(new_node)
     return False, None, steps, len(ast), None, ast.expanded
+
+def get_heuristic(task_map: Map, goal_i: int, goal_j: int) -> Callable[[int, int, int, int], float]:    
+    height, width = task_map.get_size()
+    dist = np.full((height, width), np.inf)
+    queue = deque([(goal_i, goal_j)])
+    dist[goal_i, goal_j] = 0
+    while queue:
+        cur_i, cur_j = queue.popleft()
+        for next_i, next_j in task_map.get_neighbors(cur_i, cur_j):
+            if dist[next_i, next_j] == np.inf:
+                dist[next_i, next_j] = dist[cur_i, cur_j] + compute_cost(cur_i, cur_j, next_i, next_j)
+                queue.append((next_i, next_j))
+    
+    def heuristic(i: int, j: int, gi: int, gj: int) -> float:           
+        return float(dist[i][j])
+    return heuristic

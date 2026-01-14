@@ -8,6 +8,7 @@ from utils.sipp import DynamicObstacle, sipp
 from utils.visualization import create_animation
 from utils.wsipp import w_sipp, w_sipp_dublicate_states, w_sipp_with_reexpansions
 from utils.focal_sipp import focal_sipp
+from utils.time_astar import time_astar
 from utils.heuristics import manhattan_dist
 
 def convert_string_to_cells(cell_str: str) -> npt.NDArray:
@@ -130,6 +131,7 @@ if __name__ == '__main__':
     w=3
         
     run_test(sipp)
+    run_test(time_astar)
     run_test(w_sipp, w)
     run_test(w_sipp_dublicate_states, w)
     run_test(w_sipp_with_reexpansions, w)

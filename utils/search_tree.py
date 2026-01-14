@@ -39,6 +39,25 @@ class SippNodeDublicate(SippNode):
         return self.i == other.i and self.j == other.j and self.interval == other.interval and self.isOptimal == other.isOptimal
     
 
+class TimeAStarNode(BaseNode):
+    def __init__(self, i, j, t=0, g=0, h=0, f=None, parent=None):
+        super().__init__(i=i, j=j, g=g, h=h, f=f, parent=parent)
+        self.t = t
+    
+    @property
+    def arrival_time(self):
+        return self.t
+    
+    def __lt__(self, other):
+        return (self.f < other.f) or (self.f == other.f and self.h < other.h)
+    
+    def __hash__(self):
+        return hash((self.i, self.j, self.t))
+    
+    def __eq__(self, other):
+        return self.i == other.i and self.j == other.j and self.t == other.t
+    
+
 class SearchTreePQD:
     def __init__(self):
         self._open, self._closed, self._enc_open_dublicates = [], {}, 0

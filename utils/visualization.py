@@ -10,7 +10,7 @@ def draw_rectangle(draw, i, j, scale, color):
     draw.rectangle(((j * scale, i * scale), ((j + 1) * scale - 1, (i + 1) * scale - 1)), fill=color, width=0)
 
 def compute_cost(i1: int, j1: int, i2: int, j2: int) -> Union[int, float]:
-    if abs(i1 - i2) + abs(j1 - j2) == 1: 
+    if abs(i1 - i2) + abs(j1 - j2) <= 1:
         return 1
 
 def agent_position(path: List[SippNode], time: float) -> tuple[float, float]:

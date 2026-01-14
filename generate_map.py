@@ -59,19 +59,6 @@ def continue_obstacle(
     obstacle.path.extend(shifted)
 
 
-def extend_obstacle_to_horizon(
-    obstacle: DynamicObstacle,
-    time_horizon: int
-):
-    if not obstacle.path:
-        return
-    
-    last_time, last_i, last_j = obstacle.path[-1]
-    
-    for t in range(last_time + 1, time_horizon + 1):
-        obstacle.path.append((t, last_i, last_j))
-
-
 def plan_obstacle_path(
     task_map: Map,
     start: tuple[int, int],
@@ -206,23 +193,24 @@ def load_dynamic_obstacles(
 
 
 if __name__ == '__main__':
-    task_map = load_map_from_file("data/maps/arena.map")
+    map_name = "AR0016SR"
+    task_map = load_map_from_file(f"data/maps/{map_name}.map")
     
     dynamic_obstacles = generate_dynamic_obstacles(
         task_map=task_map,
         heuristic_func=manhattan_dist,
-        max_obstacles=400,
+        max_obstacles=750,
         p_continue=0.8,
         time_horizon=2000
     )
     
     save_dynamic_obstacles(
         dynamic_obstacles,
-        filename="out/dynamic_obstacles_arena.txt"
+        filename=f"out/dynamic_obstacles_{map_name}.txt"
     )
     
     dynamic_obstacles = load_dynamic_obstacles(
-        "out/dynamic_obstacles_arena.txt"
+        f"out/dynamic_obstacles_{map_name}.txt"
     )
     
     start_i, start_j, goal_i, goal_j = random_start_goal(task_map)
@@ -248,7 +236,7 @@ if __name__ == '__main__':
     print(f"Path found! Length: {len(agent_path)}, arrival time: {agent_path[-1].g}")
     
     create_animation(
-        filename="out/generated_dynamic_obstacles_plus_sipp_agent.gif",
+        filename=f"out/generated_dynamic_obstacles_{map_name}.gif",
         grid_map=task_map,
         start=agent_path[0],
         goal=agent_path[-1],

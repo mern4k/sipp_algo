@@ -192,17 +192,17 @@ if __name__ == '__main__':
     map_name = "arena"
     task_map = load_map_from_file(f"data/maps/{map_name}.map")
     
-    # dynamic_obstacles = generate_dynamic_obstacles(
-    #     task_map=task_map,
-    #     heuristic_func=manhattan_dist,
-    #     max_obstacles=500,
-    #     p_continue=0.8
-    # )
+    dynamic_obstacles = generate_dynamic_obstacles(
+        task_map=task_map,
+        heuristic_func=manhattan_dist,
+        max_obstacles=200,
+        p_continue=0.8
+    )
     
-    # save_dynamic_obstacles(
-    #     dynamic_obstacles,
-    #     filename=f"data/obstacles/dynamic_obstacles_{map_name}.txt"
-    # )
+    save_dynamic_obstacles(
+        dynamic_obstacles,
+        filename=f"data/obstacles/dynamic_obstacles_{map_name}.txt"
+    )
     
     dynamic_obstacles = load_dynamic_obstacles(
         f"data/obstacles/dynamic_obstacles_{map_name}.txt"

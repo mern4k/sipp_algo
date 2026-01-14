@@ -23,9 +23,7 @@ def collect_metrics_multi_w(
     results = []
     map_path = f"data/maps/{map_name}.map"        
     grid = load_map_from_file(map_path)
-    obs_path = f"out/dynamic_obstacles_{map_name}.txt"
-    if not os.path.exists(obs_path):
-        obs_path = "out/dynamic_obstacles_arena.txt"
+    obs_path = f"data/obstacles/dynamic_obstacles_{map_name}.txt"
     print(f"Map: {map_name} | Obstacles: {obs_path}")
     dynamic_obstacles = load_dynamic_obstacles(obs_path)
     tasks = []
@@ -78,9 +76,10 @@ def plot_expansions_by_weight(df: pl.DataFrame):
         linewidth=1.2
     )
 
+    plt.ylim(bottom=0,top=2.5)
     plt.axhline(1.0, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
-    plt.title("ROOM: Normalized node expansions", fontsize=16)
-    plt.xlabel("Weight (w)", fontsize=13)
+    plt.title("Game map: Normalized node expansions", fontsize=16)
+    plt.xlabel("Weight", fontsize=13)
     plt.ylabel("Number of expanded nodes compared to SIPP", fontsize=13)
     plt.legend(title="Algorithm", loc='upper right')
     plt.tight_layout()
@@ -93,18 +92,20 @@ def plot_suboptimality_by_weight(df: pl.DataFrame):
     pdf = df.drop_nulls(subset=["optimality_ratio"]).to_pandas()
     sns.set_theme(style="whitegrid")
     plt.figure(figsize=(12, 7))
-    sns.boxplot(
+    sns.barplot(
         data=pdf,
         x="weight",          
         y="optimality_ratio", 
         hue="algorithm",     
-        palette="Set3",      
-        linewidth=1.2
+        palette="Set3",     
+        errorbar=None,  
+        linewidth=0.5
     )
 
+    plt.ylim(bottom=1.0, top=1.12)
     #plt.axhline(1.0, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
-    plt.title("ROOM: Path quality", fontsize=16)
-    plt.xlabel("Weight (w)", fontsize=13)
+    plt.title("Game map: Path quality", fontsize=16)
+    plt.xlabel("Weight", fontsize=13)
     plt.ylabel("Path suboptimality (compared to SIPP)", fontsize=13)
     plt.legend(title="Algorithm", loc='upper left')
     plt.tight_layout()
@@ -114,15 +115,15 @@ def plot_suboptimality_by_weight(df: pl.DataFrame):
     plt.show()
 
 if __name__ == '__main__':
-    map = "8room_000"
+    map = "AR0016SR"
     weights_list = [1.1, 1.25, 1.5, 2.0, 4.0]
     algos = [
         AlgoDefinition("W-SIPP Dupl", w_sipp_dublicate_states),
         AlgoDefinition("W-SIPP Re-exp", w_sipp_with_reexpansions),
         AlgoDefinition("Focal SIPP", focal_sipp, needs_heuristic=True)
     ]
-    file = "out/metrics_w.csv"
-    recalc = True
+    file = f"data/metrics/metrics_{map}.csv"
+    recalc = False
 
     if not recalc and os.path.exists(file):
         print(f"Loading from {file}...")
@@ -135,7 +136,6 @@ if __name__ == '__main__':
             weights=weights_list,
             num_tasks=50
         )
-        os.makedirs("out", exist_ok=True)
         df_results.write_csv(file)
     plot_expansions_by_weight(df_results)
     plot_suboptimality_by_weight(df_results)

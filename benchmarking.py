@@ -198,18 +198,18 @@ if __name__ == '__main__':
     plot_expansions(df_results)
     plot_suboptimality(df_results)
 
-    # map = "arena"
-    # file = "data/metrics/sipp_vs_timeastar.csv"
-    # recalc = False
-    # if not recalc and os.path.exists(file):
-    #     print(f"Loading from {file}...")
-    #     df_results = pl.read_csv(file)
-    # else:
-    #     print("Starting benchmark...")
-    #     df_results = collect_comparison_data(map, num_tasks=20)
-    #     print(df_results.group_by(["Algorithm"]).agg(
-    #         pl.col("Expanded Nodes").mean().alias("Avg Nodes"),
-    #         pl.col("Expanded Nodes").max().alias("Max Nodes")
-    #     ))
-    # df_results.write_csv(file)
-    # plot_comparison(df_results, map)
+    map = "arena"
+    file = "data/metrics/sipp_vs_timeastar.csv"
+    recalc = False
+    if not recalc and os.path.exists(file):
+        print(f"Loading from {file}...")
+        df_results = pl.read_csv(file)
+    else:
+        print("Starting benchmark...")
+        df_results = collect_comparison_data(map, num_tasks=20)
+        print(df_results.group_by(["Algorithm"]).agg(
+            pl.col("Expanded Nodes").mean().alias("Avg Nodes"),
+            pl.col("Expanded Nodes").max().alias("Max Nodes")
+        ))
+    df_results.write_csv(file)
+    plot_comparison(df_results, map)

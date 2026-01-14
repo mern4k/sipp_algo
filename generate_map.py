@@ -94,8 +94,7 @@ def generate_dynamic_obstacles(
     task_map: Map,
     heuristic_func: callable,
     max_obstacles: int,
-    p_continue: float,
-    time_horizon: int
+    p_continue: float
 ) -> list[DynamicObstacle]:
     obstacles = []
     
@@ -138,9 +137,6 @@ def generate_dynamic_obstacles(
             obstacles.append(DynamicObstacle(path))
         else:
             continue_obstacle(obs, path)
-    
-    # for obs in obstacles:
-    #     extend_obstacle_to_horizon(obs, time_horizon)
     
     print(f"Total obstacles: {len(obstacles)}")
     return obstacles
@@ -200,8 +196,7 @@ if __name__ == '__main__':
         task_map=task_map,
         heuristic_func=manhattan_dist,
         max_obstacles=750,
-        p_continue=0.8,
-        time_horizon=2000
+        p_continue=0.8
     )
     
     save_dynamic_obstacles(
